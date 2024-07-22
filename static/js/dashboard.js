@@ -18,6 +18,7 @@
  */
 
 let localPanels = [],
+    originalLocalPanels = [],
     dbData,
     dbName,
     dbDescr,
@@ -139,6 +140,7 @@ function saveJsonChanges() {
         dbDescr = updatedData.description;
         timeRange = updatedData.timeRange;
         localPanels = updatedData.panels;
+        originalLocalPanels = updatedData.panels;
         dbRefresh = updatedData.refresh;
         const isFavorite = updatedData.isFavorite;
 
@@ -228,6 +230,7 @@ $('#dbSet-save').on('click', saveDbSetting);
 $('#dbSet-discard').on('click', discardDbSetting);
 $('.dbSet-goToDB').on('click', discardDbSetting);
 $('.refresh-range-item').on('click', refreshRangeItemHandler);
+$('#dashboard-filter-btn').on('click', searchFilterDashboards);
 
 async function updateDashboard() {
     timeRange = $('#date-picker-btn').text().trim().replace(/\s+/g, ' ');
@@ -276,6 +279,7 @@ function refreshDashboardHandler() {
     } else {
         for (let i = 0; i < localPanels.length; i++) {
             localPanels[i].queryRes = undefined;
+            originalLocalPanels[i].queryRes = undefined;
         }
         displayPanels();
     }
@@ -338,6 +342,9 @@ function handlePanelRemove(panelId) {
         // Remove the panel data from the localPanels array
         let panelIndex = panel.attr('panel-index');
         localPanels = localPanels.filter(function (el) {
+            return el.panelIndex != panelIndex;
+        });
+        originalLocalPanels = originalLocalPanels.filter(function (el) {
             return el.panelIndex != panelIndex;
         });
         panel.remove();
@@ -450,6 +457,7 @@ function renderDuplicatePanel(duplicatedPanelIndex) {
 function resetPanelIndices() {
     for (let i = 0; i < localPanels.length; i++) {
         localPanels[i].panelIndex = i;
+        originalLocalPanels[i].panelIndex = i;
     }
 }
 
@@ -575,6 +583,11 @@ grid.on('change', function (event, items) {
             localPanels[panelIndex].gridpos.y = item.x;
             localPanels[panelIndex].gridpos.w = item.width;
             localPanels[panelIndex].gridpos.h = item.height;
+
+            originalLocalPanels[panelIndex].gridpos.x = item.y;
+            originalLocalPanels[panelIndex].gridpos.y = item.x;
+            originalLocalPanels[panelIndex].gridpos.w = item.width;
+            originalLocalPanels[panelIndex].gridpos.h = item.height;
         }
     });
 });
@@ -960,6 +973,8 @@ function addPanel(chartIndex) {
         unit: unit,
     });
 
+    originalLocalPanels.push(localPanels[localPanels.length-1]);
+
     editPanelInit(panelIndex);
     $('.panelEditor-container').css('display', 'flex');
     $('.popupOverlay').addClass('active');
@@ -1015,6 +1030,7 @@ function addDuplicatePanel(panelToDuplicate) {
         handleDescriptionTooltip(panelToDuplicate.panelId, panelToDuplicate.description);
     }
     localPanels.push(JSON.parse(JSON.stringify(panelToDuplicate)));
+    originalLocalPanels.push(JSON.parse(JSON.stringify(panelToDuplicate)));
     handlePanelView();
     handlePanelEdit();
     handlePanelRemove(idpanel);
@@ -1170,6 +1186,7 @@ function saveDbSetting() {
     dbDescr = dbSettings.description;
     timeRange = dbSettings.timeRange;
     localPanels = dbSettings.panels;
+    originalLocalPanels = dbSettings.panels;
     dbRefresh = dbSettings.refresh;
 
     updateDashboard().then((updateSuccessful) => {
@@ -1341,4 +1358,14 @@ function setDashboardQueryModeHandler(panelQueryMode) {
         // Add active class to dropdown options based on the queryMode selected
         updateQueryModeUI(queryModeCookieValue);
     }
+}
+
+// Search filter bar
+async function searchFilterDashboards() {
+    let data = getSearchFilter(false, false);
+    for ( let i = 0; i < localPanels.length; i++) {
+        localPanels[i].queryData.searchText = localPanels[i].queryData.searchText + data.searchText;
+    }
+    console.log(localPanels);
+    updateDashboard();
 }
